@@ -1,0 +1,222 @@
+namespace FerreteriaValdivia.Modelos
+{
+    public class Producto
+    {
+        // PROPIEDADES AUTO-IMPLEMENTADAS (Menos código innecesario)
+        public string CodigoBarras { get; set; }
+        public string Nombre { get; set; }
+        public decimal PrecioVenta { get; set; }
+        public int StockMinimo { get; set; }
+
+        // Propiedad con respaldo privado para aplicar validación de stock
+        private int _stockActual;
+        public int StockActual 
+        { 
+            get => _stockActual; 
+            private set 
+            { 
+                if (value >= 0) 
+                    _stockActual = value; 
+            } 
+        }
+
+        public Producto(string codigoBarras, string nombre, decimal precioVenta, int stockActual, int stockMinimo)
+        {
+            CodigoBarras = codigoBarras;
+            Nombre = nombre;
+            PrecioVenta = precioVenta; // <--- Corregido: Ahora sí expone el precio
+            StockMinimo = stockMinimo;
+            
+            // Usamos la Propiedad (no el atributo privado) para obligar a cumplir la regla >= 0
+            StockActual = stockActual >= 0 ? stockActual : 0; 
+        }
+
+        /// <summary>
+        /// Descuenta una cantidad del stock disponible si cumple las validaciones.
+        /// </summary>
+        public bool DescontarStock(int cantidad)
+        {
+            if (cantidad <= 0 || _stockActual < cantidad) 
+                return false;
+
+            _stockActual -= cantidad;
+            return true;
+        }
+
+        /// <summary>
+        /// Permite reabastecer el stock del producto.
+        /// </summary>
+        public bool AgregarStock(int cantidad)
+        {
+            if (cantidad <= 0) return false;
+            _stockActual += cantidad;
+            return true;
+        }
+
+        /// <summary>
+        /// Evalúa si el producto alcanzó o cayó por debajo del Stock Mínimo.
+        /// </summary>
+        public bool RequiereReposicion()
+        {
+            return _stockActual <= StockMinimo;
+        }
+    }
+}
+
+using System;
+
+namespace FerreteriaValdivia.Modelos
+{
+    // CLASE BASE (Padre)
+    public class Usuario
+    {
+        // Propiedades auto-implementadas
+        public int IdUsuario { get; set; }
+        public string NombreCompleto { get; set; }
+        public string Username { get; set; }
+        public bool Activo { get; set; }
+
+        // Mantenemos el hash protegido para que no quede explícito como propiedad pública de lectura general
+        protected string PasswordHash { get; set; }
+
+        public Usuario(int idUsuario, string nombreCompleto, string username, string passwordHash, bool activo = true)
+        {
+            IdUsuario = idUsuario;
+            NombreCompleto = nombreCompleto;
+            Username = username;
+            PasswordHash = passwordHash;
+            Activo = activo;
+        }
+
+        /// <summary>
+        /// Compara el hash ingresado contra el hash almacenado.
+        /// </summary>
+        public bool ValidarPassword(string passwordHashIngresado)
+        {
+            if (!Activo) return false;
+            return PasswordHash == passwordHashIngresado;
+        }
+
+        public virtual void IniciarSesion()
+        {
+            if (!Activo)
+            {
+                Console.WriteLine($"[ACCESO DENEGADO] El usuario {Username} está inactivo.");
+                return;
+            }
+            
+            Console.WriteLine($"[SESIÓN] El usuario {Username} ({GetType().Name}) ha iniciado sesión.");
+        }
+    }
+
+    // CLASE HIJA 1: Cajero
+    public class Cajero : Usuario
+    {
+        public int NumeroCaja { get; set; }
+
+        public Cajero(int idUsuario, string nombreCompleto, string username, string passwordHash, int numeroCaja, bool activo = true)
+            : base(idUsuario, nombreCompleto, username, passwordHash, activo)
+        {
+            NumeroCaja = numeroCaja;
+        }
+
+        public override void IniciarSesion()
+        {
+            base.IniciarSesion();
+            if (Activo)
+            {
+                Console.WriteLine($"--> Asignado a la Caja #{NumeroCaja}. Pronta para operar.");
+            }
+        }
+
+        public void RegistrarVenta()
+        {
+            if (!Activo) return;
+            Console.WriteLine($"El cajero {NombreCompleto} está procesando una venta en la caja #{NumeroCaja}.");
+        }
+    }
+
+    // CLASE HIJA 2: Administrador
+    public class Administrador : Usuario
+    {
+        public Administrador(int idUsuario, string nombreCompleto, string username, string passwordHash, bool activo = true)
+            : base(idUsuario, nombreCompleto, username, passwordHash, activo)
+        {
+        }
+
+        public void RegistrarNuevoProducto()
+        {
+            if (!Activo) return;
+            Console.WriteLine($"El administrador {NombreCompleto} ha agregado un nuevo producto al catálogo.");
+        }
+    }
+}
+
+using System;
+
+namespace FerreteriaValdivia.Modelos
+{
+    // Usamos 'abstract' para evitar que se instancie directamente "MetodoPago"
+    public abstract class MetodoPago
+    {
+        public string Nombre { get; set; }
+
+        protected MetodoPago(string nombre)
+        {
+            Nombre = nombre;
+        }
+
+        // Método abstracto: obliga a cada clase hija a implementar su propia lógica de cobro
+        public abstract bool ProcesarPago(decimal monto);
+    }
+
+    // Forma 1: Pago en Efectivo
+    public class PagoEfectivo : MetodoPago
+    {
+        public decimal MontoEntregado { get; set; }
+
+        public PagoEfectivo(decimal montoEntregado) : base("Efectivo")
+        {
+            MontoEntregado = montoEntregado; // <--- Corregido: Asignación indispensable
+        }
+
+        public override bool ProcesarPago(decimal monto)
+        {
+            Console.WriteLine($"[PAGO EFECTIVO]: Total a pagar: {monto:C}. Monto recibido: {MontoEntregado:C}.");
+
+            if (MontoEntregado >= monto)
+            {
+                decimal cambio = MontoEntregado - monto;
+                Console.WriteLine($"-> Cambio exacto a entregar: {cambio:C}");
+                return true;
+            }
+
+            Console.WriteLine("-> ERROR: Monto entregado insuficiente.");
+            return false;
+        }
+    }
+
+    // Forma 2: Pago con Tarjeta
+    public class PagoTarjeta : MetodoPago
+    {
+        public string NumeroTarjeta { get; set; }
+
+        public PagoTarjeta(string numeroTarjeta) : base("Tarjeta")
+        {
+            NumeroTarjeta = numeroTarjeta ?? string.Empty;
+        }
+
+        public override bool ProcesarPago(decimal monto)
+        {
+            Console.WriteLine($"[PAGO TARJETA]: Conectando con terminal POS para cobro de {monto:C}...");
+
+            // Validación de longitud para evitar exepciones por Substring
+            string ultimosDigitos = NumeroTarjeta.Length >= 4 
+                ? NumeroTarjeta.Substring(NumeroTarjeta.Length - 4) 
+                : "****";
+
+            Console.WriteLine($"-> Pago autorizado con tarjeta terminada en {ultimosDigitos}.");
+            return true;
+        }
+    }
+}
