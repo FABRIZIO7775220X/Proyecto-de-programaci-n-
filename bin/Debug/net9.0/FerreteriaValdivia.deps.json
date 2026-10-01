@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "FerreteriaValdivia/1.0.0": {
+        "runtime": {
+          "FerreteriaValdivia.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "FerreteriaValdivia/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
